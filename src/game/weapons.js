@@ -9,8 +9,8 @@ export function tryFire(game, actor, angle) {
   w.mag--; actor.fireCd = def.delay * (actor.isPlayer ? 1 : BOT.fireMul);
   actor.recoil = Math.min(actor.recoil + 0.02, 0.12);
   const spread = def.spread * (actor.isPlayer ? 0.25 : 1) + (actor.moving ? (actor.isPlayer ? 0.01 : 0.03) : 0) + actor.recoil * (actor.isPlayer ? 0.5 : 1) + (actor.blind > 0 ? 0.25 : 0);
-  const muzzle = actor.radius + 3;
-  const bx = actor.x + Math.cos(angle) * muzzle, by = actor.y + Math.sin(angle) * muzzle;
+  const sp = actor.mzW || { x: actor.x + Math.cos(angle) * (actor.radius + 3), y: actor.y + Math.sin(angle) * (actor.radius + 3) };
+  const bx = sp.x, by = sp.y;
   const bdef = actor.isPlayer ? def : { ...def, dmg: def.dmg * BOT.dmgMul };
   const pellets = def.pellets || 1;
   for (let i = 0; i < pellets; i++) {

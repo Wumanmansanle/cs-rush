@@ -308,11 +308,17 @@ export class Game {
   _playerControl(dt) {
     const p = this.player, inp = this.input;
     if (!p.alive) return;
-    const [wx, wy] = this.cam.screenToWorld(inp.mouse.x, inp.mouse.y);
-    let ddx = wx - p.x, ddy = wy - p.y; const dl = Math.hypot(ddx, ddy) || 1; ddx /= dl; ddy /= dl;
-    const [msx, msy] = this.cam.worldToScreen(p.x + ddx * 10, p.y + ddy * 10, 11);
+    const [px, py] = this.cam.worldToScreen(p.x, p.y);
+    const c0 = Math.cos(p.angle), s0 = Math.sin(p.angle);
+    const dir0 = (c0 - s0) >= 0 ? 1 : -1;
+    const tilt0 = Math.max(-3, Math.min(3, ((c0 + s0) / 2) * 4));
+    const bob0 = p.moving ? [0, -0.6, 0, -0.6][Math.floor(this.time * 10 + p.id) % 4] : 0;
+    const gy0 = -9 + tilt0 + (p.reloadT > 0 ? 1.5 : 0);
+    const msx = px + dir0 * 16 * CHAR_SCALE, msy = py + (gy0 + bob0) * CHAR_SCALE;
     const [wdx, wdy] = this.cam.screenDirToWorld(inp.mouse.x - msx, inp.mouse.y - msy);
     p.angle = Math.atan2(wdy, wdx);
+    p.mzS = [msx, msy];
+    p.mzW = this.cam.screenToWorld(msx, msy + 11);
     let mx = 0, my = 0;
     if (inp.down('KeyW')) my -= 1; if (inp.down('KeyS')) my += 1;
     if (inp.down('KeyA')) mx -= 1; if (inp.down('KeyD')) mx += 1;
@@ -385,7 +391,7 @@ export class Game {
     for (const gr of this.grenades) items.push({ y: gr.x + gr.y, f: () => { const [x, y] = cam.worldToScreen(gr.x, gr.y, 2); g.circle(x, y, 2, gr.type === 'he' ? '#7fce7f' : gr.type === 'fire' ? '#e07a3a' : '#cfcfcf'); } });
     items.sort((p, q) => p.y - q.y);
     for (const it of items) it.f();
-    for (const b of this.bullets) { const [x, y] = cam.worldToScreen(b.x, b.y, 8); const [tx, ty] = cam.worldToScreen(b.x - b.dx * 6, b.y - b.dy * 6, 8); g.glow(x, y, 5, 'rgba(255,242,168,0.35)', 'rgba(255,242,168,0)'); g.line(tx, ty, x, y, COLORS.bullet, 1.2); }
+    for (const b of this.bullets) { const [x, y] = cam.worldToScreen(b.x, b.y, 11); const [tx, ty] = cam.worldToScreen(b.x - b.dx * 6, b.y - b.dy * 6, 11); g.glow(x, y, 5, 'rgba(255,242,168,0.35)', 'rgba(255,242,168,0)'); g.line(tx, ty, x, y, COLORS.bullet, 1.2); }
     for (const c of this.clouds) { const [x, y] = cam.worldToScreen(c.x, c.y, 6); g.circle(x, y, c.r, 'rgba(205,205,205,0.5)'); g.circle(x, y, c.r * 0.7, 'rgba(222,222,222,0.55)'); g.circle(x, y, c.r * 0.4, 'rgba(235,235,235,0.5)'); }
     this._drawEffects(g, cam);
     this._drawParticles(g, cam);
@@ -410,7 +416,7 @@ export class Game {
     if (S === 'live') {
       const wid = this.player.curDef().id;
       if (this.player.alive) {
-        const [mzx, mzy] = cam.worldToScreen(this.player.x + Math.cos(this.player.angle) * 10, this.player.y + Math.sin(this.player.angle) * 10, 11);
+        const [mzx, mzy] = this.player.mzS || cam.worldToScreen(this.player.x, this.player.y, 11);
         g.line(mzx, mzy, this.input.mouse.x, this.input.mouse.y, 'rgba(255,255,255,0.22)', 1);
         if (wid === 'awp' || wid === 'ssg08') {
           const a = this.player.angle; const R = WEAPONS[wid].range;

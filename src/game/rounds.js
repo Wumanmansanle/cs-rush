@@ -21,9 +21,9 @@ function assignRoles(game) {
   const site = choice(['A', 'B']);
   const ts = game.actors.filter(a => a.team === TEAM.T && a.alive);
   const carrier = game.player.team === TEAM.T ? game.player : choice(ts);
-  for (const a of ts) if (!a.isPlayer) a.brain = { role: a === carrier ? 'carrier' : 'push', site, path: [], pathI: 0, repathT: 0, reactT: BOT.reaction, lastTarget: { x: a.x, y: a.y }, strafeT: 0, strafeDir: 1 };
+  for (const a of ts) if (!a.isPlayer) a.brain = { role: a === carrier ? 'carrier' : 'push', site, hold: 4, path: [], pathI: 0, repathT: 0, reactT: BOT.reaction, lastTarget: { x: a.x, y: a.y }, strafeT: 0, strafeDir: 1 };
   const cts = game.actors.filter(a => a.team === TEAM.CT && !a.isPlayer);
-  cts.forEach((a, i) => { a.brain = { role: 'defend', site: i % 2 === 0 ? 'A' : 'B', path: [], pathI: 0, repathT: 0, reactT: BOT.reaction, lastTarget: { x: a.x, y: a.y }, strafeT: 0, strafeDir: 1 }; });
+  cts.forEach((a, i) => { a.brain = { role: 'defend', site: i % 2 === 0 ? 'A' : 'B', hold: 0, path: [], pathI: 0, repathT: 0, reactT: BOT.reaction, lastTarget: { x: a.x, y: a.y }, strafeT: 0, strafeDir: 1 }; });
   return carrier;
 }
 

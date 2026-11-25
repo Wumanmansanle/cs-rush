@@ -1,7 +1,14 @@
 // 版本与迭代日志：每次修改游戏时在此升版并追加一条记录（关于页自动读取）
-export const VERSION = '0.18';
+export const VERSION = '0.19';
 
 export const CHANGELOG = [
+  {
+    v: '0.19', date: '2026-11-26',
+    notes: [
+      '瞄准线/子弹起点改为实际枪口 sprite 位置（枪口↔准星严格对齐）',
+      '玩法平衡：T 开局 4s 准备期不立即 rush；下包 3.2→5s，CT 有防守/回防窗口',
+    ],
+  },
   {
     v: '0.18', date: '2026-11-26',
     notes: [

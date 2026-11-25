@@ -20,7 +20,7 @@ export const OT = { half: 3, win: 4, start: 16000 };
 export const PLAYER = { radius: 6, hp: 100, speed: 98, walkSpeed: 46 };
 
 export const TIMING = {
-  buy: 15, round: 115, bomb: 40, plant: 3.2, defuse: 10, defuseKit: 5, roundEnd: 4,
+  buy: 15, round: 115, bomb: 40, plant: 5.0, defuse: 10, defuseKit: 5, roundEnd: 4,
   matchMin: 3, matchMax: 23, loading: 2.2,
 };
 
