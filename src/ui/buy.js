@@ -80,7 +80,7 @@ export function drawBuy(g, game) {
   const mx = game.input.mouse.x, my = game.input.mouse.y;
   const img = game.buyPix && game.buyPix[game.playerSide];
   if (img) {
-    g.ctx.imageSmoothingEnabled = false;
+    g.ctx.imageSmoothingEnabled = true;
     g.ctx.drawImage(img, 8, 26, 464, 236);
     for (const cell of buyLayout(game)) {
       const hover = mx >= cell.x && mx <= cell.x + cell.w && my >= cell.y && my <= cell.y + cell.h;

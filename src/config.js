@@ -96,8 +96,9 @@ export const NADES = {
 };
 
 export const BOT = {
-  radius: 6, hp: 100, speed: 82,
-  reaction: 0.35, aimError: 0.10, sight: 250, fireRange: 230,
+  radius: 6, hp: 80, speed: 70,
+  reaction: 0.6, aimError: 0.22, sight: 200, fireRange: 180,
+  dmgMul: 0.6, fireMul: 1.5,
 };
 
 export const defaultPistol = (side) => (side === TEAM.T ? 'glock' : 'usp');

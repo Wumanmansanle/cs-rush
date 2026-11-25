@@ -1,4 +1,4 @@
-import { WEAPONS, GEAR, NADES, TEAM } from '../config.js';
+import { WEAPONS, GEAR, NADES, TEAM, BOT } from '../config.js';
 import { rand } from '../engine/math.js';
 import { Bullet } from '../entities/bullet.js';
 
@@ -6,15 +6,16 @@ export function tryFire(game, actor, angle) {
   if (!actor.alive || actor.reloadT > 0 || actor.fireCd > 0) return false;
   const w = actor.cur(); const def = WEAPONS[w.id];
   if (w.mag <= 0) { startReload(actor); return false; }
-  w.mag--; actor.fireCd = def.delay;
+  w.mag--; actor.fireCd = def.delay * (actor.isPlayer ? 1 : BOT.fireMul);
   actor.recoil = Math.min(actor.recoil + 0.02, 0.12);
   const spread = def.spread + (actor.moving ? 0.03 : 0) + actor.recoil + (actor.blind > 0 ? 0.25 : 0);
   const muzzle = actor.radius + 3;
   const bx = actor.x + Math.cos(angle) * muzzle, by = actor.y + Math.sin(angle) * muzzle;
+  const bdef = actor.isPlayer ? def : { ...def, dmg: def.dmg * BOT.dmgMul };
   const pellets = def.pellets || 1;
   for (let i = 0; i < pellets; i++) {
     const a = angle + rand(-spread, spread);
-    game.bullets.push(new Bullet(bx, by, a, def, actor));
+    game.bullets.push(new Bullet(bx, by, a, bdef, actor));
   }
   game.audio.shot(def.cat === 'rifle' && def.delay > 1 ? 'sniper' : def.cat === 'rifle' ? 'rifle' : def.cat === 'mid' ? 'smg' : 'pistol');
   game.muzzle(actor, angle);

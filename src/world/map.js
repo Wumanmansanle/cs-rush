@@ -1,4 +1,5 @@
 import { TILE, VIEW_W, VIEW_H, COLORS, WALL_H, CRATE_H } from '../config.js';
+import { Renderer } from '../engine/renderer.js';
 
 export const TILECODE = { FLOOR: 0, WALL: 1, CRATE: 2, SITE_A: 3, SITE_B: 4, SPAWN_T: 5, SPAWN_CT: 6 };
 const { FLOOR, WALL, CRATE, SITE_A, SITE_B, SPAWN_T, SPAWN_CT } = TILECODE;
@@ -20,6 +21,22 @@ export class GameMap {
     def.paint(fill);
     this.sites = { A: this._site(def.sites.A), B: this._site(def.sites.B) };
     this.spawnRects = { T: this._rect(def.spawns.T), CT: this._rect(def.spawns.CT) };
+    this._ground = null; this._blocks = null;
+  }
+  // 静态地面一次性烘焙到离屏画布，每帧单 blit（大幅提帧）
+  bakeGround() {
+    if (this._ground) return;
+    const W = this.w + this.h, H = (this.w + this.h) / 2 + TILE * 2;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const r = new Renderer(c); r.scale = 1; r.begin();
+    const cam = { x: -this.h, y: 0, zoom: 1, worldToScreen: (x, y, z = 0) => [(x - y) + this.h, (x + y) / 2 - z] };
+    this.renderGround(r, cam);
+    this._ground = c;
+  }
+  blitGround(g, cam) {
+    this.bakeGround();
+    const vw = VIEW_W / (cam.zoom || 1), vh = VIEW_H / (cam.zoom || 1);
+    g.ctx.drawImage(this._ground, cam.x + this.h, cam.y, vw, vh, 0, 0, vw, vh);
   }
   _rect(a) { return { c0: a[0], r0: a[1], c1: a[2], r1: a[3] }; }
   inB(c, r) { return c >= 0 && r >= 0 && c < this.cols && r < this.rows; }
@@ -87,13 +104,19 @@ export class GameMap {
     }
   }
   solidBlocks(cam) {
-    const T = TILE; const list = [];
-    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
-      const t = this.grid[r][c];
-      if (t !== WALL && t !== CRATE) continue;
-      const sx = (c - r) * T - cam.x, sy = (c + r) * T / 2 - cam.y;
+    const T = TILE;
+    if (!this._blocks) {
+      this._blocks = [];
+      for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
+        const t = this.grid[r][c];
+        if (t === WALL || t === CRATE) this._blocks.push({ c, r, t, depth: (c + r + 1) * T });
+      }
+    }
+    const list = [];
+    for (const b of this._blocks) {
+      const sx = (b.c - b.r) * T - cam.x, sy = (b.c + b.r) * T / 2 - cam.y;
       if (sx < -T * 2 || sx > VIEW_W + T * 2 || sy < -T * 3 || sy > VIEW_H + T * 2) continue;
-      list.push({ c, r, t, depth: (c + r + 1) * T });
+      list.push(b);
     }
     return list;
   }

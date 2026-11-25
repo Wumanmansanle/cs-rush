@@ -8,7 +8,7 @@ export class Actor {
     this.team = team; this.isPlayer = isPlayer;
     this.radius = isPlayer ? PLAYER.radius : BOT.radius;
     this.x = 0; this.y = 0; this.angle = -Math.PI / 2;
-    this.hp = PLAYER.hp; this.armor = 0; this.helmet = false; this.kit = false;
+    this.hp = isPlayer ? PLAYER.hp : BOT.hp; this.armor = 0; this.helmet = false; this.kit = false;
     this.alive = true;
     this.money = 0;
     this.primary = null;

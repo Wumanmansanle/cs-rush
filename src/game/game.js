@@ -65,9 +65,9 @@ export class Game {
     im.onload = () => {
       const sw = im.naturalWidth, sh = im.naturalHeight;
       const cropY = Math.floor(sh * 0.16);
-      const c = document.createElement('canvas'); c.width = 232; c.height = 118;
+      const c = document.createElement('canvas'); c.width = 928; c.height = 472;
       const cx = c.getContext('2d'); cx.imageSmoothingEnabled = true;
-      cx.drawImage(im, 0, cropY, sw, sh - cropY, 0, 0, 232, 118);
+      cx.drawImage(im, 0, cropY, sw, sh - cropY, 0, 0, 928, 472);
       this.buyPix[side] = c;
     };
     im.src = src;
@@ -350,7 +350,7 @@ export class Game {
     const ox = this.cam.x, oy = this.cam.y;
     if (this.shake > 0) { this.cam.x += (Math.random() * 2 - 1) * this.shake * 6; this.cam.y += (Math.random() * 2 - 1) * this.shake * 6; }
     const cam = this.cam;
-    this.map.renderGround(g, cam);
+    this.map.blitGround(g, cam);
     for (const d of this.decals) { const al = Math.min(1, d.life / 6); const [x, y] = cam.worldToScreen(d.x, d.y); g.circle(x, y, 1, `rgba(30,25,20,${al * 0.7})`); }
     for (const f of this.fires) { const [x, y] = cam.worldToScreen(f.x, f.y); g.glow(x, y, f.r, 'rgba(230,120,40,0.5)', 'rgba(230,120,40,0)'); g.circle(x, y, f.r * 0.7, `rgba(240,150,60,${0.3 + 0.1 * Math.sin(this.time * 10)})`); }
     const items = [];
@@ -370,9 +370,9 @@ export class Game {
     const mc = g.ctx;
     mc.save(); mc.setTransform(1, 0, 0, 1, 0, 0);
     mc.globalCompositeOperation = 'lighter'; mc.globalAlpha = 0.55;
-    mc.imageSmoothingEnabled = true; mc.filter = 'blur(3px)';
+    mc.imageSmoothingEnabled = true;
     mc.drawImage(this.bloomCanvas, 0, 0, mc.canvas.width, mc.canvas.height);
-    mc.filter = 'none'; mc.globalAlpha = 1; mc.globalCompositeOperation = 'source-over';
+    mc.globalAlpha = 1; mc.globalCompositeOperation = 'source-over';
     mc.restore();
     const lg = g.ctx.createLinearGradient(0, 0, VIEW_W, VIEW_H);
     lg.addColorStop(0, 'rgba(255,220,160,0.07)'); lg.addColorStop(0.5, 'rgba(255,220,160,0)'); lg.addColorStop(1, 'rgba(20,20,40,0.10)');
