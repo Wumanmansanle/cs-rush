@@ -309,7 +309,10 @@ export class Game {
     const p = this.player, inp = this.input;
     if (!p.alive) return;
     const [wx, wy] = this.cam.screenToWorld(inp.mouse.x, inp.mouse.y);
-    p.angle = angleTo(p.x, p.y, wx, wy);
+    let ddx = wx - p.x, ddy = wy - p.y; const dl = Math.hypot(ddx, ddy) || 1; ddx /= dl; ddy /= dl;
+    const [msx, msy] = this.cam.worldToScreen(p.x + ddx * 10, p.y + ddy * 10, 11);
+    const [wdx, wdy] = this.cam.screenDirToWorld(inp.mouse.x - msx, inp.mouse.y - msy);
+    p.angle = Math.atan2(wdy, wdx);
     let mx = 0, my = 0;
     if (inp.down('KeyW')) my -= 1; if (inp.down('KeyS')) my += 1;
     if (inp.down('KeyA')) mx -= 1; if (inp.down('KeyD')) mx += 1;
@@ -406,12 +409,15 @@ export class Game {
     this._drawMsgs(g);
     if (S === 'live') {
       const wid = this.player.curDef().id;
-      if (this.player.alive && (wid === 'awp' || wid === 'ssg08')) {
-        const a = this.player.angle; const R = WEAPONS[wid].range;
-        const [x0, y0] = cam.worldToScreen(this.player.x + Math.cos(a) * 10, this.player.y + Math.sin(a) * 10, 11);
-        const [x1, y1] = cam.worldToScreen(this.player.x + Math.cos(a) * R, this.player.y + Math.sin(a) * R, 11);
-        g.line(x0, y0, x1, y1, 'rgba(143,211,255,0.35)', 1);
-        g.ring(x1, y1, 3, 'rgba(143,211,255,0.5)', 1);
+      if (this.player.alive) {
+        const [mzx, mzy] = cam.worldToScreen(this.player.x + Math.cos(this.player.angle) * 10, this.player.y + Math.sin(this.player.angle) * 10, 11);
+        g.line(mzx, mzy, this.input.mouse.x, this.input.mouse.y, 'rgba(255,255,255,0.22)', 1);
+        if (wid === 'awp' || wid === 'ssg08') {
+          const a = this.player.angle; const R = WEAPONS[wid].range;
+          const [x1, y1] = cam.worldToScreen(this.player.x + Math.cos(a) * R, this.player.y + Math.sin(a) * R, 11);
+          g.line(mzx, mzy, x1, y1, 'rgba(143,211,255,0.30)', 1);
+          g.ring(x1, y1, 3, 'rgba(143,211,255,0.5)', 1);
+        }
       }
       this._drawCrosshair(g); if (this.player.blind > 0) g.rect(0, 0, VIEW_W, VIEW_H, `rgba(255,255,255,${Math.min(0.9, this.player.blind / 2)})`);
     }
@@ -495,7 +501,11 @@ export class Game {
     }
     ctx.fillStyle = 'rgba(20,20,24,0.8)'; ctx.fillRect(dir * 1.2 - 0.8, -16.8, 1.6, 1.4);
     ctx.restore();
-    if (a.isPlayer) { g.glow(x, y - 10, 12, 'rgba(143,211,255,0.16)', 'rgba(143,211,255,0)'); g.ring(x, y, 6, COLORS.player, 1); }
+    if (a.isPlayer) {
+      g.glow(x, y - 10, 12, 'rgba(143,211,255,0.16)', 'rgba(143,211,255,0)');
+      g.ctx.fillStyle = COLORS.player;
+      g.ctx.beginPath(); g.ctx.moveTo(x, y - 30); g.ctx.lineTo(x - 3, y - 35); g.ctx.lineTo(x + 3, y - 35); g.ctx.closePath(); g.ctx.fill();
+    }
     else if (a.team === this.playerSide) g.text(a.name, x, y - 29, { align: 'center', color: 'rgba(242,234,216,0.6)', size: 5, font: CJK });
     if (a.flash > 0) g.circle(x, y - 12, 6, 'rgba(255,255,255,0.65)');
     if (this.bomb && this.bomb.state === 'carried' && this.bomb.carrier === a) { g.glow(x - dir * 4, y - 12, 5, 'rgba(224,90,90,0.4)', 'rgba(224,90,90,0)'); g.rect(x - dir * 4 - 1, y - 13, 2, 2, COLORS.bomb); }

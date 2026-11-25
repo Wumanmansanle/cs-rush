@@ -16,4 +16,5 @@ export class Camera {
   }
   worldToScreen(x, y, z = 0) { return [(x - y) - this.x, (x + y) / 2 - z - this.y]; }
   screenToWorld(sx, sy) { const a = sx + this.x, b = sy + this.y; return [(a + 2 * b) / 2, (2 * b - a) / 2]; }
+  screenDirToWorld(sx, sy) { return [(sx + 2 * sy) / 2, (2 * sy - sx) / 2]; }
 }
