@@ -3,6 +3,12 @@ import { TILE, VIEW_W, VIEW_H, COLORS, WALL_H, CRATE_H } from '../config.js';
 export const TILECODE = { FLOOR: 0, WALL: 1, CRATE: 2, SITE_A: 3, SITE_B: 4, SPAWN_T: 5, SPAWN_CT: 6 };
 const { FLOOR, WALL, CRATE, SITE_A, SITE_B, SPAWN_T, SPAWN_CT } = TILECODE;
 
+// 有限调色板 ramps（像素艺术原则：少色、刻意 dither、避免 pillow shading）
+const SAND = ['#d8b878', '#cfae6c', '#c5a260', '#b89454', '#a8854a'];
+const WALL_TOP = ['#9c8460', '#8a7452', '#7a6547', '#6a563c'];
+const WALL_FACE = ['#5a4a33', '#4a3c28', '#3a2f1f'];
+const WOOD = ['#c99a5e', '#b8935a', '#9c7b46', '#7a5c33'];
+
 export class GameMap {
   constructor(def) {
     this.def = def;
@@ -37,75 +43,84 @@ export class GameMap {
           if (this.walkable(c + dc, r + dr)) return { c: c + dc, r: r + dr };
     return { c, r };
   }
-  _bounds(cam) {
-    const vw = VIEW_W / (cam.zoom || 1), vh = VIEW_H / (cam.zoom || 1);
-    return [
-      Math.max(0, Math.floor(cam.x / TILE)), Math.min(this.cols - 1, Math.ceil((cam.x + vw) / TILE)),
-      Math.max(0, Math.floor(cam.y / TILE)), Math.min(this.rows - 1, Math.ceil((cam.y + vh) / TILE)),
-    ];
-  }
-  // 地面 pass：只画地板/标记/ AO，立体块交给深度排序 pass
+  // 等距地面 pass：diamond tiles + 调色板 dither + 方向光软阴影
   renderGround(g, cam) {
-    const [c0, c1, r0, r1] = this._bounds(cam);
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const T = TILE;
+    const ctx = g.ctx;
+    const dia = (sx, sy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + T, sy + T / 2); ctx.lineTo(sx, sy + T); ctx.lineTo(sx - T, sy + T / 2); ctx.closePath(); ctx.fill(); };
+    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       if (this.solid(c, r)) continue;
-      const t = this.grid[r][c]; const x = c * TILE - cam.x, y = r * TILE - cam.y;
-      const hsh = (c * 7 + r * 13) % 5;
-      g.rect(x, y, TILE, TILE, (c + r) & 1 ? COLORS.floor : COLORS.floorAlt);
-      if (hsh === 0) { g.rect(x + 3, y + 5, 1, 1, 'rgba(0,0,0,0.10)'); g.rect(x + 10, y + 11, 1, 1, 'rgba(255,255,255,0.12)'); }
-      else if (hsh === 1) g.rect(x + 6, y + 9, 2, 1, 'rgba(0,0,0,0.07)');
-      else if (hsh === 2) g.rect(x + 12, y + 4, 1, 2, 'rgba(255,255,255,0.10)');
-      else if (hsh === 3) g.rect(x + 2, y + 12, 3, 1, 'rgba(0,0,0,0.05)');
-      if (this.solid(c, r - 1)) g.rect(x, y, TILE, 2, 'rgba(0,0,0,0.18)');
-      if (this.solid(c, r + 1)) g.rect(x, y + TILE - 2, TILE, 2, 'rgba(0,0,0,0.10)');
-      if (this.solid(c - 1, r)) g.rect(x, y, 2, TILE, 'rgba(0,0,0,0.14)');
-      if (this.solid(c + 1, r)) g.rect(x + TILE - 2, y, 2, TILE, 'rgba(0,0,0,0.14)');
-      if (t === SITE_A) g.rect(x, y, TILE, TILE, 'rgba(184,86,63,0.28)');
-      else if (t === SITE_B) g.rect(x, y, TILE, TILE, 'rgba(63,127,184,0.28)');
-      else if (t === SPAWN_T) g.rect(x, y, TILE, TILE, 'rgba(207,143,79,0.14)');
-      else if (t === SPAWN_CT) g.rect(x, y, TILE, TILE, 'rgba(79,143,206,0.14)');
+      const sx = (c - r) * T - cam.x, sy = (c + r) * T / 2 - cam.y;
+      if (sx < -T * 2 || sx > VIEW_W + T * 2 || sy < -T * 2 || sy > VIEW_H + T * 2) continue;
+      const t = this.grid[r][c];
+      const hsh = (c * 7 + r * 13) % 7;
+      dia(sx, sy, (c + r) & 1 ? SAND[1] : SAND[2]);
+      if (hsh === 0) dia(sx - 4, sy + 2, SAND[0]);
+      else if (hsh === 2) { ctx.fillStyle = SAND[3]; ctx.fillRect(sx - 3, sy + T / 2 - 1, 2, 2); ctx.fillRect(sx + 2, sy + T / 2 + 1, 2, 2); }
+      else if (hsh === 3) { ctx.fillStyle = SAND[3]; ctx.fillRect(sx - 4, sy + T / 2, 6, 1); }
+      else if (hsh === 1) { ctx.fillStyle = SAND[4]; ctx.fillRect(sx + 1, sy + T / 2 - 2, 1, 1); }
+      if (this.solid(c, r - 1) || this.solid(c - 1, r)) {
+        ctx.save(); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + T, sy + T / 2); ctx.lineTo(sx, sy + T); ctx.lineTo(sx - T, sy + T / 2); ctx.closePath(); ctx.clip();
+        const gr = ctx.createLinearGradient(sx, sy, sx, sy + T); gr.addColorStop(0, 'rgba(20,14,8,0.35)'); gr.addColorStop(1, 'rgba(20,14,8,0)');
+        ctx.fillStyle = gr; ctx.fillRect(sx - T, sy, T * 2, T); ctx.restore();
+      }
+      if (t === SITE_A) dia(sx, sy, 'rgba(184,86,63,0.22)');
+      else if (t === SITE_B) dia(sx, sy, 'rgba(63,127,184,0.22)');
+      else if (t === SPAWN_T) dia(sx, sy, 'rgba(207,143,79,0.14)');
+      else if (t === SPAWN_CT) dia(sx, sy, 'rgba(79,143,206,0.14)');
     }
     for (const k of ['A', 'B']) {
-      const s = this.sites[k]; const sx = s.x - cam.x, sy = s.y - cam.y;
-      g.stroke(sx + 1, sy + 1, s.w - 2, s.h - 2, k === 'A' ? 'rgba(232,138,111,0.7)' : 'rgba(111,168,232,0.7)', 1);
-      g.text(k, s.cx - cam.x, s.cy - cam.y, { color: k === 'A' ? '#e88a6f' : '#6fa8e8', size: 22, align: 'center', baseline: 'middle', bold: true });
+      const s = this.sites[k];
+      const [nx, ny] = cam.worldToScreen(s.x, s.y);
+      const [ex, ey] = cam.worldToScreen(s.x + s.w, s.y);
+      const [sx2, sy2] = cam.worldToScreen(s.x + s.w, s.y + s.h);
+      const [wx2, wy2] = cam.worldToScreen(s.x, s.y + s.h);
+      const col = k === 'A' ? '#e88a6f' : '#6fa8e8';
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(ex, ey); ctx.lineTo(sx2, sy2); ctx.lineTo(wx2, wy2); ctx.closePath(); ctx.stroke();
+      const [cx2, cy2] = cam.worldToScreen(s.cx, s.cy);
+      g.text(k, cx2, cy2, { color: col, size: 22, align: 'center', baseline: 'middle', bold: true });
     }
     for (const [c, r, t] of (this.def.labels || [])) {
-      g.text(t, c * TILE - cam.x, r * TILE - cam.y, { color: 'rgba(242,234,216,0.5)', size: 7, align: 'center', font: '"Microsoft YaHei", sans-serif' });
+      const [lx, ly] = cam.worldToScreen(c * T, r * T);
+      g.text(t, lx, ly, { color: 'rgba(242,234,216,0.5)', size: 7, align: 'center', font: '"Microsoft YaHei", sans-serif' });
     }
   }
   solidBlocks(cam) {
-    const [c0, c1, r0, r1] = this._bounds(cam);
-    const list = [];
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const T = TILE; const list = [];
+    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       const t = this.grid[r][c];
-      if (t === WALL || t === CRATE) list.push({ c, r, t, y: (r + 1) * TILE });
+      if (t !== WALL && t !== CRATE) continue;
+      const sx = (c - r) * T - cam.x, sy = (c + r) * T / 2 - cam.y;
+      if (sx < -T * 2 || sx > VIEW_W + T * 2 || sy < -T * 3 || sy > VIEW_H + T * 2) continue;
+      list.push({ c, r, t, depth: (c + r + 1) * T });
     }
     return list;
   }
-  // 伪 3D 立体块：顶面 + 南面 + 东侧阴影 + 地面投影
+  // 等距立体块：top diamond + 左/右面 + 方向光 + selout + 软阴影
   drawBlock(g, cam, c, r, t) {
-    const x = c * TILE - cam.x, y = r * TILE - cam.y;
+    const T = TILE; const ctx = g.ctx;
     const H = t === WALL ? WALL_H : CRATE_H;
-    g.rect(x, y + TILE, TILE, 3, 'rgba(0,0,0,0.22)');
-    if (t === WALL) {
-      g.rect(x, y + TILE - H, TILE, H, '#4a3c28');
-      g.rect(x, y + TILE - H, TILE, 1, 'rgba(0,0,0,0.35)');
-      for (let i = 0; i < TILE; i += 8) g.rect(x + i, y + TILE - H + 2, 1, H - 3, 'rgba(0,0,0,0.18)');
-      g.rect(x, y - H, TILE, TILE, COLORS.wall);
-      g.rect(x, y - H, TILE, 2, COLORS.wallTop);
-      g.rect(x, y - H + 8, TILE, 1, 'rgba(0,0,0,0.16)');
-      g.rect(x + ((r % 2) ? 4 : 10), y - H + 3, 1, 5, 'rgba(0,0,0,0.13)');
-      g.rect(x + TILE - 2, y - H, 2, TILE, 'rgba(0,0,0,0.18)');
-    } else {
-      g.rect(x + 1, y + TILE - H, TILE - 2, H, '#6a5230');
-      g.rect(x + 1, y + TILE - H, TILE - 2, 1, 'rgba(0,0,0,0.3)');
-      g.rect(x + 1, y + 1 - H, TILE - 2, TILE - 2, COLORS.crate);
-      g.rect(x + 1, y + 1 - H, TILE - 2, 2, COLORS.crateTop);
-      g.rect(x + 1, y + 6 - H, TILE - 2, 1, 'rgba(0,0,0,0.18)');
-      g.rect(x + 1, y + 11 - H, TILE - 2, 1, 'rgba(0,0,0,0.18)');
-      g.rect(x + TILE - 3, y + 1 - H, 2, TILE - 2, 'rgba(0,0,0,0.15)');
-      g.line(x + 3, y + 3 - H, x + TILE - 3, y + TILE - 3 - H, COLORS.crateTop, 1);
-    }
+    const sx = (c - r) * T - cam.x, sy = (c + r) * T / 2 - cam.y;
+    const n = this.solid(c, r - 1), e = this.solid(c + 1, r), s = this.solid(c, r + 1), w = this.solid(c - 1, r);
+    ctx.fillStyle = 'rgba(20,14,8,0.28)';
+    ctx.beginPath(); ctx.moveTo(sx, sy + 2); ctx.lineTo(sx + T, sy + T / 2 + 2); ctx.lineTo(sx, sy + T + 2); ctx.lineTo(sx - T, sy + T / 2 + 2); ctx.closePath(); ctx.fill();
+    const top = t === WALL ? WALL_TOP : WOOD;
+    const faceL = t === WALL ? WALL_FACE[0] : WOOD[2];
+    const faceR = t === WALL ? WALL_FACE[2] : WOOD[3];
+    ctx.fillStyle = faceL;
+    ctx.beginPath(); ctx.moveTo(sx - T, sy + T / 2 - H); ctx.lineTo(sx, sy + T - H); ctx.lineTo(sx, sy + T); ctx.lineTo(sx - T, sy + T / 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = faceR;
+    ctx.beginPath(); ctx.moveTo(sx, sy + T - H); ctx.lineTo(sx + T, sy + T / 2 - H); ctx.lineTo(sx + T, sy + T / 2); ctx.lineTo(sx, sy + T); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = top[1];
+    ctx.beginPath(); ctx.moveTo(sx, sy - H); ctx.lineTo(sx + T, sy + T / 2 - H); ctx.lineTo(sx, sy + T - H); ctx.lineTo(sx - T, sy + T / 2 - H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = top[3]; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx - T / 2, sy + T / 4 - H); ctx.lineTo(sx + T / 2, sy + 3 * T / 4 - H); ctx.stroke();
+    if (t === CRATE) { ctx.strokeStyle = top[0]; ctx.beginPath(); ctx.moveTo(sx - T / 2, sy + 3 * T / 4 - H); ctx.lineTo(sx + T / 2, sy + T / 4 - H); ctx.stroke(); }
+    if (!n || !w) { ctx.strokeStyle = top[0]; ctx.beginPath(); ctx.moveTo(sx - T, sy + T / 2 - H); ctx.lineTo(sx, sy - H); ctx.stroke(); }
+    if (!n || !e) { ctx.strokeStyle = top[0]; ctx.beginPath(); ctx.moveTo(sx, sy - H); ctx.lineTo(sx + T, sy + T / 2 - H); ctx.stroke(); }
+    if (!s || !w) { ctx.strokeStyle = top[3]; ctx.beginPath(); ctx.moveTo(sx - T, sy + T / 2 - H); ctx.lineTo(sx, sy + T - H); ctx.stroke(); }
+    if (!s || !e) { ctx.strokeStyle = top[3]; ctx.beginPath(); ctx.moveTo(sx, sy + T - H); ctx.lineTo(sx + T, sy + T / 2 - H); ctx.stroke(); }
+    if (t === CRATE) { ctx.fillStyle = '#3a3a40'; ctx.fillRect(sx - 1, sy - H - 1, 2, 2); ctx.fillRect(sx - 1, sy + T - H - 1, 2, 2); }
   }
 }

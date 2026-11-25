@@ -8,12 +8,14 @@ window.__game = game;
 // 分辨率自适应：启动即适配，并每 5 秒检测窗口尺寸变化
 function fitCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const ssaa = dpr === 1 ? 2 : 1; // 低 DPR 屏超采样抗锯齿
+  const scale = Math.min(4, dpr * ssaa);
   const s = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
   const cssW = Math.floor(VIEW_W * s), cssH = Math.floor(VIEW_H * s);
   canvas.style.width = cssW + 'px';
   canvas.style.height = cssH + 'px';
-  canvas.width = Math.max(1, Math.round(cssW * dpr));
-  canvas.height = Math.max(1, Math.round(cssH * dpr));
+  canvas.width = Math.max(1, Math.round(cssW * scale));
+  canvas.height = Math.max(1, Math.round(cssH * scale));
 }
 let lastW = window.innerWidth, lastH = window.innerHeight;
 fitCanvas();

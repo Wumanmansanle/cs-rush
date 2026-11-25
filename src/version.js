@@ -1,7 +1,25 @@
 // 版本与迭代日志：每次修改游戏时在此升版并追加一条记录（关于页自动读取）
-export const VERSION = '0.12';
+export const VERSION = '0.14';
 
 export const CHANGELOG = [
+  {
+    v: '0.14', date: '2026-11-25',
+    notes: [
+      '等距 45° 重渲染：真 diamond tiles + 高度挤出 + 左/右面方向光',
+      '深度排序按 (x+y)；鼠标反投影等距逆变换',
+      'SSAA 超采样抗锯齿（低 DPR 屏 2x）',
+      '角色 4 帧步态 + 身体 bob；全局方向光渐变 + 暗角',
+    ],
+  },
+  {
+    v: '0.13', date: '2026-11-25',
+    notes: [
+      '地图重渲染（pixel-art skill 指导）：有限调色板 ramps + 刻意 dither',
+      '墙体自动平铺：邻接 bitmask 亮帽/selout 边/角像素，干净接缝',
+      'HD-2D 方向光软阴影（墙/箱投影到地面）',
+      '包点 hazard 角标 + Stencil 字母；木箱木纹 ramps + 金属角',
+    ],
+  },
   {
     v: '0.12', date: '2026-11-25',
     notes: [
