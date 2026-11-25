@@ -2,7 +2,7 @@
 export const TILE = 16;
 export const VIEW_W = 480;
 export const VIEW_H = 270;
-export const VIEW_ZOOM = 1.4;   // 2.5D 相机 lowered：视野更近，不再高空
+export const VIEW_ZOOM = 0.9;   // 视野加宽：确保先看到敌人再交火（可视半宽 > 机器人射程）
 export const WALL_H = 10;      // 墙体伪 3D 高度
 export const CRATE_H = 7;      // 木箱伪 3D 高度
 export const CHAR_SCALE = 1.2; // 角色 sprite 放大（更清晰）
@@ -96,9 +96,9 @@ export const NADES = {
 };
 
 export const BOT = {
-  radius: 6, hp: 80, speed: 70,
-  reaction: 0.6, aimError: 0.22, sight: 200, fireRange: 180,
-  dmgMul: 0.6, fireMul: 1.5,
+  radius: 6, hp: 70, speed: 62,
+  reaction: 0.8, aimError: 0.30, sight: 160, fireRange: 140,
+  dmgMul: 0.45, fireMul: 1.8,
 };
 
 export const defaultPistol = (side) => (side === TEAM.T ? 'glock' : 'usp');

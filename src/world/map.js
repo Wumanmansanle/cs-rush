@@ -29,6 +29,7 @@ export class GameMap {
     const W = this.w + this.h, H = (this.w + this.h) / 2 + TILE * 2;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const r = new Renderer(c); r.scale = 1; r.begin();
+    r.ctx.fillStyle = '#332e26'; r.ctx.fillRect(0, 0, W, H);
     const cam = { x: -this.h, y: 0, zoom: 1, worldToScreen: (x, y, z = 0) => [(x - y) + this.h, (x + y) / 2 - z] };
     this.renderGround(r, cam);
     this._ground = c;

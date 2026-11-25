@@ -30,7 +30,7 @@ function assignRoles(game) {
 function botBuy(game, a) {
   const rifles = weaponsFor(a.team, 'rifle').filter(w => w.delay < 1);
   const best = rifles.sort((x, y) => y.price - x.price)[0];
-  if (best && a.money >= best.price) buyWeapon(a, best.id);
+  if (best && a.money >= best.price && Math.random() < 0.45) buyWeapon(a, best.id);
   else {
     const mids = weaponsFor(a.team, 'mid').filter(w => w.auto);
     const m = mids.sort((x, y) => y.price - x.price)[0];
