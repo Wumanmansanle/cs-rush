@@ -11,8 +11,40 @@ const COLS = [
 ];
 const CW = 90, GAP = 5, X0 = 6, Y0 = 32, CH = 40;
 
+// 与参考截图逐格对齐的物品顺序（贴图模式），避免买 AWP 得 AUG 等错位
+const IMG_ORDER = {
+  CT: {
+    gear: ['kevlar', 'helmet', 'zeus', 'kit'],
+    pistol: ['usp', 'dual', 'p250', 'fn57', 'deagle'],
+    mid: ['mp5', 'xm1014', 'bizon', 'mp7', 'mp9'],
+    rifle: ['famas', 'm4a4', 'm4a1s', 'awp', 'aug'],
+    nade: ['flash', 'smoke', 'he', 'fire', 'decoy'],
+  },
+  T: {
+    gear: ['kevlar', 'helmet', 'zeus'],
+    pistol: ['glock', 'dual', 'p250', 'tec9', 'deagle'],
+    mid: ['mp5', 'xm1014', 'bizon', 'mp7', 'mac10'],
+    rifle: ['galil', 'ak47', 'awp', 'sg553', 'ssg08'],
+    nade: ['flash', 'smoke', 'he', 'fire', 'decoy'],
+  },
+};
+
 function colItems(game, key) {
   const side = game.playerSide;
+  const imgMode = !!(game.buyPix && game.buyPix[side]);
+  const ids = imgMode ? IMG_ORDER[side][key] : null;
+  const nadeEntry = (id) => ({
+    kind: 'nade', id,
+    name: id === 'fire' ? (side === TEAM.T ? NADES.fire.nameT : NADES.fire.nameCT) : NADES[id].name,
+    price: nadePrice(game.player, id),
+  });
+  if (ids) {
+    return ids.map(id => {
+      if (key === 'nade') return nadeEntry(id);
+      if (key === 'gear' && id !== 'zeus') return { kind: 'gear', id, name: GEAR[id].name, price: GEAR[id].price };
+      return { kind: 'weapon', id, name: WEAPONS[id].name, price: WEAPONS[id].price };
+    });
+  }
   if (key === 'gear') {
     const list = [
       { kind: 'gear', id: 'kevlar', name: GEAR.kevlar.name, price: GEAR.kevlar.price },
@@ -22,11 +54,7 @@ function colItems(game, key) {
     if (side === TEAM.CT) list.push({ kind: 'gear', id: 'kit', name: GEAR.kit.name, price: GEAR.kit.price });
     return list;
   }
-  if (key === 'nade') return ['flash', 'smoke', 'he', 'fire', 'decoy'].map(id => ({
-    kind: 'nade', id,
-    name: id === 'fire' ? (side === TEAM.T ? NADES.fire.nameT : NADES.fire.nameCT) : NADES[id].name,
-    price: nadePrice(game.player, id),
-  }));
+  if (key === 'nade') return ['flash', 'smoke', 'he', 'fire', 'decoy'].map(nadeEntry);
   return weaponsFor(side, key).map(w => ({ kind: 'weapon', id: w.id, name: w.name, price: w.price }));
 }
 

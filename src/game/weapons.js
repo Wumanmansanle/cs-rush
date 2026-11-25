@@ -8,7 +8,7 @@ export function tryFire(game, actor, angle) {
   if (w.mag <= 0) { startReload(actor); return false; }
   w.mag--; actor.fireCd = def.delay * (actor.isPlayer ? 1 : BOT.fireMul);
   actor.recoil = Math.min(actor.recoil + 0.02, 0.12);
-  const spread = def.spread + (actor.moving ? 0.03 : 0) + actor.recoil + (actor.blind > 0 ? 0.25 : 0);
+  const spread = def.spread * (actor.isPlayer ? 0.6 : 1) + (actor.moving ? (actor.isPlayer ? 0.02 : 0.03) : 0) + actor.recoil + (actor.blind > 0 ? 0.25 : 0);
   const muzzle = actor.radius + 3;
   const bx = actor.x + Math.cos(angle) * muzzle, by = actor.y + Math.sin(angle) * muzzle;
   const bdef = actor.isPlayer ? def : { ...def, dmg: def.dmg * BOT.dmgMul };

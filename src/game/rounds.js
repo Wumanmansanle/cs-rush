@@ -62,6 +62,7 @@ export function startRound(game, pistol = false) {
   if (!pistol) for (const a of game.actors) if (!a.isPlayer) botBuy(game, a);
   game.bomb = { state: 'carried', carrier, x: carrier.x, y: carrier.y, timer: TIMING.bomb, plantT: 0, defuseProgress: 0, site: null, beepT: 0, defuser: null };
   game.buyOpen = true;
+  game.drops.length = 0;
   game.addMsg(`第 ${game.round} 回合 · ${pistol ? '手枪局' : '购买阶段'}`);
 }
 

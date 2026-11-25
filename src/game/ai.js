@@ -46,6 +46,14 @@ function objectiveTarget(game, bot) {
   const b = bot.brain;
   if (game.bomb.state === 'planted') {
     if (bot.team === TEAM.CT) return { x: game.bomb.x, y: game.bomb.y };
+    // T 下包后主动猎杀最近的 CT（含拆包者），不再原地守点
+    let best = null, bd = Infinity;
+    for (const a of game.actors) {
+      if (!a.alive || a.team !== TEAM.CT) continue;
+      const d = dist(bot.x, bot.y, a.x, a.y);
+      if (d < bd) { bd = d; best = a; }
+    }
+    if (best) return { x: best.x, y: best.y };
     return { x: game.bomb.x + ((bot.id * 29) % 5 - 2) * 14, y: game.bomb.y + ((bot.id * 41) % 5 - 2) * 14 };
   }
   return siteSpot(game, b.site, bot.id);

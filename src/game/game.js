@@ -35,7 +35,7 @@ export class Game {
     this.playerSide = TEAM.CT;
     this.actors = []; this.bullets = []; this.effects = []; this.killfeed = []; this.msgs = [];
     this.grenades = []; this.clouds = []; this.fires = [];
-    this.particles = []; this.decals = [];
+    this.particles = []; this.decals = []; this.drops = [];
     this.nadeSel = 'he';
     this.state = 'title'; this.stateT = 0; this.round = 0;
     this.scores = { CT: 0, T: 0 }; this.lossTier = { CT: 0, T: 0 };
@@ -129,6 +129,7 @@ export class Game {
     if (!silent) { if (target.isPlayer) { this.audio.hurt(); this.shake = Math.max(this.shake, 0.25); } else this.audio.hit(); }
     if (died) {
       this.addKill(`${from ? from.name : '炸弹'} 击杀了 ${target.name}`);
+      if (target.primary) this.drops.push({ x: target.x, y: target.y, id: target.primary.id });
       if (from && kill) { from.kills++; from.roundKills = (from.roundKills || 0) + 1; from.money = Math.min(ECON.max, from.money + kill); }
       if (!silent) this.audio.kill();
       if (target.isPlayer) this.addMsg('你阵亡了 · 观战队友');
@@ -234,8 +235,17 @@ export class Game {
     this.msgs = this.msgs.filter(m => m.life > 0);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt);
 
-    const focus = this.player.alive ? this.player : (this.actors.find(a => a.team === this.playerSide && a.alive) || this.player);
-    this.cam.follow(focus.x, focus.y, this.map.w, this.map.h, dt);
+    let fx, fy;
+    if (this.player.alive) {
+      const wid = this.player.curDef().id;
+      const look = (wid === 'awp' || wid === 'ssg08') ? 110 : 0; // 狙击朝准星方向预移视野
+      fx = this.player.x + Math.cos(this.player.angle) * look;
+      fy = this.player.y + Math.sin(this.player.angle) * look;
+    } else {
+      const m = this.actors.find(a => a.team === this.playerSide && a.alive) || this.player;
+      fx = m.x; fy = m.y;
+    }
+    this.cam.follow(fx, fy, this.map.w, this.map.h, dt);
     inp.endFrame();
   }
 
@@ -323,6 +333,12 @@ export class Game {
       if (owned.length) { const i = owned.indexOf(this.nadeSel); this.nadeSel = owned[(i + 1) % owned.length]; this.audio.ui(); }
     }
     const nearBomb = this.bomb.state === 'planted' && dist(p.x, p.y, this.bomb.x, this.bomb.y) < 16;
+    const di = this.drops.findIndex(d => dist(p.x, p.y, d.x, d.y) < 16);
+    if (di >= 0 && inp.justPressed('KeyE')) {
+      const d = this.drops[di];
+      p.equipPrimary(d.id); this.drops.splice(di, 1);
+      this.audio.buy(); this.addMsg(`拾取 ${WEAPONS[d.id].name}`);
+    }
     p.defusing = p.team === TEAM.CT && inp.down('KeyE') && !p.moving && nearBomb;
     p.planting = p.team === TEAM.T && this.bomb.carrier === p && this.bomb.state === 'carried' && !!this.map.siteAt(p.x, p.y) && inp.down('KeyE') && !p.moving;
   }
@@ -353,6 +369,12 @@ export class Game {
     this.map.blitGround(g, cam);
     for (const d of this.decals) { const al = Math.min(1, d.life / 6); const [x, y] = cam.worldToScreen(d.x, d.y); g.circle(x, y, 1, `rgba(30,25,20,${al * 0.7})`); }
     for (const f of this.fires) { const [x, y] = cam.worldToScreen(f.x, f.y); g.glow(x, y, f.r, 'rgba(230,120,40,0.5)', 'rgba(230,120,40,0)'); g.circle(x, y, f.r * 0.7, `rgba(240,150,60,${0.3 + 0.1 * Math.sin(this.time * 10)})`); }
+    for (const d of this.drops) {
+      const [x, y] = cam.worldToScreen(d.x, d.y);
+      g.glow(x, y, 8, 'rgba(255,242,168,0.25)', 'rgba(255,242,168,0)');
+      g.rect(x - 5, y - 2, 10, 2, '#d8d8dc'); g.rect(x - 1, y, 2, 3, '#d8d8dc');
+      g.text(WEAPONS[d.id].name, x, y - 8, { align: 'center', color: 'rgba(242,234,216,0.7)', size: 5, font: CJK });
+    }
     const items = [];
     for (const b of this.map.solidBlocks(cam)) items.push({ y: b.depth, f: () => this.map.drawBlock(g, cam, b.c, b.r, b.t) });
     for (const a of this.actors) items.push({ y: a.x + a.y, f: () => this._drawActor(g, cam, a) });
@@ -382,7 +404,17 @@ export class Game {
     drawMinimap(g, this);
     drawKillfeed(g, this);
     this._drawMsgs(g);
-    if (S === 'live') { this._drawCrosshair(g); if (this.player.blind > 0) g.rect(0, 0, VIEW_W, VIEW_H, `rgba(255,255,255,${Math.min(0.9, this.player.blind / 2)})`); }
+    if (S === 'live') {
+      const wid = this.player.curDef().id;
+      if (this.player.alive && (wid === 'awp' || wid === 'ssg08')) {
+        const a = this.player.angle; const R = WEAPONS[wid].range;
+        const [x0, y0] = cam.worldToScreen(this.player.x + Math.cos(a) * 10, this.player.y + Math.sin(a) * 10, 11);
+        const [x1, y1] = cam.worldToScreen(this.player.x + Math.cos(a) * R, this.player.y + Math.sin(a) * R, 11);
+        g.line(x0, y0, x1, y1, 'rgba(143,211,255,0.35)', 1);
+        g.ring(x1, y1, 3, 'rgba(143,211,255,0.5)', 1);
+      }
+      this._drawCrosshair(g); if (this.player.blind > 0) g.rect(0, 0, VIEW_W, VIEW_H, `rgba(255,255,255,${Math.min(0.9, this.player.blind / 2)})`);
+    }
     if (S === 'buy' && this.buyOpen) drawBuy(g, this);
     if (S === 'buy' && !this.buyOpen) g.text('按 B 打开购买菜单 · Enter 直接开始', VIEW_W / 2, VIEW_H - 12, { align: 'center', color: COLORS.dim, size: 8, font: CJK });
     if (S === 'roundend') drawRoundEnd(g, this);
@@ -410,8 +442,10 @@ export class Game {
       ctx.globalAlpha = 1;
       return;
     }
-    const dir = Math.cos(a.angle) >= 0 ? 1 : -1;
-    const tilt = Math.sin(a.angle) * 2;
+    const adx = Math.cos(a.angle), ady = Math.sin(a.angle);
+    const sdx = adx - ady, sdy = (adx + ady) / 2;
+    const dir = sdx >= 0 ? 1 : -1;
+    const tilt = Math.max(-3, Math.min(3, sdy * 4));
     const wf = a.moving ? Math.floor(this.time * 10 + a.id) % 4 : 0;
     const walk = [-1.5, 0, 1.5, 0][wf];
     const bob = [0, -0.6, 0, -0.6][wf];
