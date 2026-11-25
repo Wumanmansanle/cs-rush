@@ -80,7 +80,6 @@ export function updateBot(game, bot, dt) {
   if (!bot.alive || !bot.brain) return;
   const b = bot.brain;
   b.repathT -= dt; b.reactT -= dt;
-  if (b.hold > 0) b.hold -= dt;
   if (bot.blind > 0) bot.blind -= dt;
   bot.planting = false; bot.defusing = false;
 
@@ -101,8 +100,6 @@ export function updateBot(game, bot, dt) {
     const [ex, ey] = norm(enemy.x - bot.x, enemy.y - bot.y);
     moveActor(game.map, bot, -ey * b.strafeDir * BOT.speed * 0.4 * dt, ex * b.strafeDir * BOT.speed * 0.4 * dt);
     bot.moving = true;
-  } else if (b.hold > 0) {
-    bot.moving = false; // 开局准备期：T 不立即 rush，给 CT 防守窗口
   } else {
     moveAlongPath(game, bot, objectiveTarget(game, bot), dt);
   }

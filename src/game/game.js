@@ -20,6 +20,7 @@ import { drawCoverBackground, drawTitle, drawMapSelect, drawAbout, drawExit, dra
 const CJK = '"Microsoft YaHei", sans-serif';
 const hit = (b, inp) => inp.mouse.x >= b.x && inp.mouse.x <= b.x + b.w && inp.mouse.y >= b.y && inp.mouse.y <= b.y + b.h;
 const NADE_ORDER = ['he', 'flash', 'smoke', 'fire', 'decoy'];
+const GUN_TIP = (id, cat) => id === 'zeus' ? 7 : cat === 'pistol' ? 7 : (id === 'awp' || id === 'ssg08') ? 17 : id === 'xm1014' ? 14 : cat === 'mid' ? 13 : 15;
 
 export class Game {
   constructor(canvas) {
@@ -314,7 +315,9 @@ export class Game {
     const tilt0 = Math.max(-3, Math.min(3, ((c0 + s0) / 2) * 4));
     const bob0 = p.moving ? [0, -0.6, 0, -0.6][Math.floor(this.time * 10 + p.id) % 4] : 0;
     const gy0 = -9 + tilt0 + (p.reloadT > 0 ? 1.5 : 0);
-    const msx = px + dir0 * 16 * CHAR_SCALE, msy = py + (gy0 + bob0) * CHAR_SCALE;
+    const tip = GUN_TIP(p.curDef().id, p.curDef().cat);
+    const msx = px + dir0 * (tip - p.recoil * 4) * CHAR_SCALE;
+    const msy = py + (gy0 + bob0) * CHAR_SCALE;
     const [wdx, wdy] = this.cam.screenDirToWorld(inp.mouse.x - msx, inp.mouse.y - msy);
     p.angle = Math.atan2(wdy, wdx);
     p.mzS = [msx, msy];
