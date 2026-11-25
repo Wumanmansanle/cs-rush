@@ -285,7 +285,7 @@ export class Game {
   boomSmoke(x, y) { for (let i = 0; i < 6; i++) this._spawnP(x + rand(-8, 8), y + rand(-8, 8), rand(-10, 10), rand(-30, -12), 0.9, 'smoke', rand(3, 6), 'rgba(90,90,90,0.5)'); for (let i = 0; i < 8; i++) this._spawnP(x, y, rand(-70, 70), rand(-70, 70), 0.4, 'ember', 1.5, 'rgba(255,180,80,0.9)'); }
   _drawParticles(g, cam) {
     for (const p of this.particles) {
-      const x = p.x - cam.x, y = p.y - cam.y; const t = p.life / p.max;
+      const [x, y] = cam.worldToScreen(p.x, p.y); const t = p.life / p.max;
       const fade = (base) => p.col.replace(/[\d.]+\)$/, base + ')');
       if (p.type === 'casing') g.rect(x, y, 2, 1, p.col);
       else if (p.type === 'dust') g.circle(x, y, p.size * (1.4 - t), fade(t * 0.35));
@@ -351,17 +351,17 @@ export class Game {
     if (this.shake > 0) { this.cam.x += (Math.random() * 2 - 1) * this.shake * 6; this.cam.y += (Math.random() * 2 - 1) * this.shake * 6; }
     const cam = this.cam;
     this.map.renderGround(g, cam);
-    for (const d of this.decals) { const al = Math.min(1, d.life / 6); g.circle(d.x - cam.x, d.y - cam.y, 1, `rgba(30,25,20,${al * 0.7})`); }
-    for (const f of this.fires) { const x = f.x - cam.x, y = f.y - cam.y; g.glow(x, y, f.r, 'rgba(230,120,40,0.5)', 'rgba(230,120,40,0)'); g.circle(x, y, f.r * 0.7, `rgba(240,150,60,${0.3 + 0.1 * Math.sin(this.time * 10)})`); }
+    for (const d of this.decals) { const al = Math.min(1, d.life / 6); const [x, y] = cam.worldToScreen(d.x, d.y); g.circle(x, y, 1, `rgba(30,25,20,${al * 0.7})`); }
+    for (const f of this.fires) { const [x, y] = cam.worldToScreen(f.x, f.y); g.glow(x, y, f.r, 'rgba(230,120,40,0.5)', 'rgba(230,120,40,0)'); g.circle(x, y, f.r * 0.7, `rgba(240,150,60,${0.3 + 0.1 * Math.sin(this.time * 10)})`); }
     const items = [];
-    for (const b of this.map.solidBlocks(cam)) items.push({ y: b.y, f: () => this.map.drawBlock(g, cam, b.c, b.r, b.t) });
-    for (const a of this.actors) items.push({ y: a.y, f: () => this._drawActor(g, cam, a) });
-    if (this.bomb && this.bomb.state === 'planted') items.push({ y: this.bomb.y, f: () => this._drawBomb(g, cam) });
-    for (const gr of this.grenades) items.push({ y: gr.y, f: () => { const x = gr.x - cam.x, y = gr.y - cam.y; g.circle(x, y - 2, 2, gr.type === 'he' ? '#7fce7f' : gr.type === 'fire' ? '#e07a3a' : '#cfcfcf'); } });
+    for (const b of this.map.solidBlocks(cam)) items.push({ y: b.depth, f: () => this.map.drawBlock(g, cam, b.c, b.r, b.t) });
+    for (const a of this.actors) items.push({ y: a.x + a.y, f: () => this._drawActor(g, cam, a) });
+    if (this.bomb && this.bomb.state === 'planted') items.push({ y: this.bomb.x + this.bomb.y, f: () => this._drawBomb(g, cam) });
+    for (const gr of this.grenades) items.push({ y: gr.x + gr.y, f: () => { const [x, y] = cam.worldToScreen(gr.x, gr.y, 2); g.circle(x, y, 2, gr.type === 'he' ? '#7fce7f' : gr.type === 'fire' ? '#e07a3a' : '#cfcfcf'); } });
     items.sort((p, q) => p.y - q.y);
     for (const it of items) it.f();
-    for (const b of this.bullets) { const x = b.x - cam.x, y = b.y - cam.y - 8; g.glow(x, y, 5, 'rgba(255,242,168,0.35)', 'rgba(255,242,168,0)'); g.line(x - b.dx * 6, y - b.dy * 6, x, y, COLORS.bullet, 1.2); }
-    for (const c of this.clouds) { const x = c.x - cam.x, y = c.y - cam.y - 6; g.circle(x, y, c.r, 'rgba(205,205,205,0.5)'); g.circle(x, y, c.r * 0.7, 'rgba(222,222,222,0.55)'); g.circle(x, y, c.r * 0.4, 'rgba(235,235,235,0.5)'); }
+    for (const b of this.bullets) { const [x, y] = cam.worldToScreen(b.x, b.y, 8); const [tx, ty] = cam.worldToScreen(b.x - b.dx * 6, b.y - b.dy * 6, 8); g.glow(x, y, 5, 'rgba(255,242,168,0.35)', 'rgba(255,242,168,0)'); g.line(tx, ty, x, y, COLORS.bullet, 1.2); }
+    for (const c of this.clouds) { const [x, y] = cam.worldToScreen(c.x, c.y, 6); g.circle(x, y, c.r, 'rgba(205,205,205,0.5)'); g.circle(x, y, c.r * 0.7, 'rgba(222,222,222,0.55)'); g.circle(x, y, c.r * 0.4, 'rgba(235,235,235,0.5)'); }
     this._drawEffects(g, cam);
     this._drawParticles(g, cam);
     this.cam.x = ox; this.cam.y = oy;
@@ -374,7 +374,9 @@ export class Game {
     mc.drawImage(this.bloomCanvas, 0, 0, mc.canvas.width, mc.canvas.height);
     mc.filter = 'none'; mc.globalAlpha = 1; mc.globalCompositeOperation = 'source-over';
     mc.restore();
-    g.rect(0, 0, VIEW_W, VIEW_H, 'rgba(255,180,90,0.04)');
+    const lg = g.ctx.createLinearGradient(0, 0, VIEW_W, VIEW_H);
+    lg.addColorStop(0, 'rgba(255,220,160,0.07)'); lg.addColorStop(0.5, 'rgba(255,220,160,0)'); lg.addColorStop(1, 'rgba(20,20,40,0.10)');
+    g.ctx.fillStyle = lg; g.ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     g.vignette(VIEW_W, VIEW_H, 0.32);
     drawHUD(g, this);
     drawMinimap(g, this);
@@ -389,7 +391,7 @@ export class Game {
   }
 
   _drawActor(g, cam, a) {
-    const x = a.x - cam.x, y = a.y - cam.y;
+    const [x, y] = cam.worldToScreen(a.x, a.y);
     if (x < -40 || y < -50 || x > VIEW_W + 40 || y > VIEW_H + 40) return;
     const ctx = g.ctx;
     const CT = a.team === TEAM.CT;
@@ -410,7 +412,9 @@ export class Game {
     }
     const dir = Math.cos(a.angle) >= 0 ? 1 : -1;
     const tilt = Math.sin(a.angle) * 2;
-    const walk = a.moving ? Math.sin(this.time * 13 + a.id) : 0;
+    const wf = a.moving ? Math.floor(this.time * 10 + a.id) % 4 : 0;
+    const walk = [-1.5, 0, 1.5, 0][wf];
+    const bob = [0, -0.6, 0, -0.6][wf];
     g.ellipse(x, y + 1, 6, 2.4, 'rgba(0,0,0,0.32)');
     ctx.save(); ctx.translate(x, y); ctx.scale(CHAR_SCALE, CHAR_SCALE);
     const C = (cx, cy, r, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); };
@@ -421,6 +425,7 @@ export class Game {
     ctx.fillStyle = '#2b2b30';
     ctx.fillRect(-2.5 + walk * 1.2, -1.5, 2, 1.5);
     ctx.fillRect(0.5 - walk * 1.2, -1.5, 2, 1.5);
+    ctx.translate(0, bob);
     ctx.fillStyle = '#3a3a40'; ctx.fillRect(-dir * 4 - 1.2, -12, 2.4, 5);
     L(-dir * 4, -12, -dir * 5.5, -14, 0.5, '#2b2b30');
     const tg = ctx.createLinearGradient(0, -13, 0, -6);
@@ -484,7 +489,7 @@ export class Game {
 
   _drawBomb(g, cam) {
     const b = this.bomb; if (!b || b.state !== 'planted') return;
-    const x = b.x - cam.x, y = b.y - cam.y;
+    const [x, y] = cam.worldToScreen(b.x, b.y);
     g.rect(x - 3, y - 2, 6, 4, '#3a2a2a'); g.rect(x - 3, y - 2, 6, 1, '#5a3a3a');
     const blink = Math.sin(this.time * (b.timer < 10 ? 16 : 6)) > 0;
     if (blink) g.glow(x + 2, y - 1, 10, 'rgba(255,90,90,0.5)', 'rgba(255,90,90,0)');
@@ -494,7 +499,7 @@ export class Game {
 
   _drawEffects(g, cam) {
     for (const e of this.effects) {
-      const x = e.x - cam.x, y = e.y - cam.y; const t = e.life / e.max;
+      const [x, y] = cam.worldToScreen(e.x, e.y); const t = e.life / e.max;
       if (e.type === 'spark') { g.glow(x, y, 6, `rgba(255,220,120,${t * 0.6})`, 'rgba(255,220,120,0)'); g.circle(x, y, 1.5 * t + 0.5, `rgba(255,240,180,${t})`); }
       else if (e.type === 'muzzle') { g.glow(x, y, 16, `rgba(255,220,140,${t * 0.7})`, 'rgba(255,220,140,0)'); g.circle(x, y, 2.5 * t + 1, `rgba(255,245,200,${t})`); }
       else if (e.type === 'blood') { g.circle(x, y, 3 * (1 - t) + 1, `rgba(192,57,43,${t * 0.8})`); g.circle(x + 3, y - 2, 1.2, `rgba(192,57,43,${t * 0.6})`); g.circle(x - 3, y + 2, 1.0, `rgba(192,57,43,${t * 0.6})`); }
