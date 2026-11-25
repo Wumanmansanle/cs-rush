@@ -4,7 +4,7 @@
 
 2D 俯视像素风、**单人 + 机器人**的经典**爆破模式**。免安装、发链接即玩，适合作为维护停机时的轻量小游戏。
 
-当前版本 **v0.12**（版本与迭代日志见游戏内「关于游戏」页，源码 `src/version.js`）。
+当前版本 **v0.14**（版本与迭代日志见游戏内「关于游戏」页，源码 `src/version.js`）。
 
 ## 界面与流程
 
@@ -32,7 +32,7 @@
 
 ## 分辨率自适应
 
-启动时按窗口尺寸适配画布，并**每 5 秒**检测窗口变化自动重排（另监听 resize 即时响应）。
+启动时按窗口尺寸适配画布，并**每 5 秒**检测窗口变化自动重排（另监听 resize 即时响应）。v0.14 起低 DPR 屏启用 SSAA 超采样抗锯齿。
 
 ## 玩法
 
@@ -79,7 +79,7 @@ npx serve .
 
 ## 技术栈
 
-原生 **JavaScript (ES Modules) + Canvas 2D + WebAudio**，零依赖、免构建。低分辨率渲染 + 整数放大呈现像素风；音效全部由 WebAudio 程序化合成。v0.4 起按**窗口尺寸 × DPR 原生分辨率**渲染（文字/几何锐利），并加入光影、粒子、发光弹道、平滑相机与暗角/色调后期。v0.5 加入 **bloom 泛光**（自发光缓冲+模糊+加色合成）与**精细角色/武器 sprite**（护甲/肩臂/头部装具/腿部动画；步枪/狙击/冲锋/霰弹/手枪区分枪型）。v0.8 加入伪 3D 墙体挤出+AO、弹壳/脚步尘/枪口烟/火星粒子、墙面弹痕贴花与爆炸多段粒子。v0.9 角色更写实：体积渐变光影、双手持枪、腿靴步态、背包天线、弹袋织带、CT 头盔耳机/T 帽巾、护目镜、队友名字标签（原创 operator 造型，非 Valve 模型）。
+原生 **JavaScript (ES Modules) + Canvas 2D + WebAudio**，零依赖、免构建。v0.14 起采用**等距 45°（2:1 diamond）投影**重渲染地图与实体（真 diamond tiles + 高度挤出 + 左/右面方向光 + 深度排序），叠加 bloom 泛光、SSAA、粒子、软阴影与暗角/方向光后期；音效全部由 WebAudio 程序化合成。角色为原创 operator 造型（非 Valve 模型），4 帧步态 + 身体 bob。
 
 ## 目录结构
 
@@ -88,12 +88,12 @@ cs-rush/
 ├── index.html            入口
 ├── styles.css            画布缩放与像素化
 └── src/
-    ├── main.js           启动 + 主循环 + 分辨率自适应
+    ├── main.js           启动 + 主循环 + 分辨率自适应/SSAA
     ├── version.js        版本号与迭代日志（关于页读取）
     ├── config.js         全部数值平衡（武器/经济/ timing/颜色）
-    ├── engine/           循环输入渲染相机碰撞音效（A 负责）
+    ├── engine/           循环输入渲染相机(等距)碰撞音效（A 负责）
     │   ├── math.js input.js camera.js collision.js renderer.js audio.js
-    ├── world/            map.js 渲染 + maps.js 三张地图布局（C 负责）
+    ├── world/            map.js 等距渲染 + maps.js 三张地图布局（C 负责）
     ├── entities/         actor.js bullet.js（B 负责）
     ├── game/             weapons.js ai.js rounds.js game.js（B 负责）
     └── ui/               hud.js minimap.js killfeed.js buy.js menus.js（C 负责）
